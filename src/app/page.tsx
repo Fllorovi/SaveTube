@@ -1,63 +1,50 @@
-'use client'; // Обязательно, так как мы используем интерактивность (useState)
+'use client';
 
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { ConvertForm } from '../components/ConvertForm';
+import { HistoryList } from '../components/HistoryList';
+import { useHistory } from '../hooks/useHistory';
 
 export default function Home() {
-  const [url, setUrl] = useState('');
-  const [quality, setQuality] = useState('320');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [downloadLink, setDownloadLink] = useState('');
+  const { history, addToHistory, clearHistory } = useHistory();
 
-  const handleConvert = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConvert = async (url: string, quality: string) => {
     setLoading(true);
     setError('');
     setDownloadLink('');
 
     try {
-      // 1. Отправляем запрос на наш API
       const res = await fetch('/api/convert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, quality }),
       });
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Ошибка при запуске');
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Ошибка при запуске конвертации');
-      }
-
-      const taskId = data.taskId;
-
-      // 2. Опрашиваем базу данных Supabase каждые 3 секунды, пока не закончится
       const interval = setInterval(async () => {
-        const { data: task, error } = await supabase
+        const { data: task } = await supabase
           .from('conversions')
           .select('status, file_name')
-          .eq('id', taskId)
+          .eq('id', data.taskId)
           .single();
 
-        if (error) {
-          console.error(error);
-          return;
-        }
-
-        if (task.status === 'done') {
+        if (task?.status === 'done') {
           clearInterval(interval);
           setLoading(false);
-          // Формируем ссылку на файл в папке public/audio
-          setDownloadLink(`/audio/${task.file_name}`);
-          setUrl(''); // Очищаем поле ввода
-        } else if (task.status === 'error') {
+          const fileLink = `/audio/${task.file_name}`;
+          setDownloadLink(fileLink);
+          addToHistory(url, task.file_name);
+        } else if (task?.status === 'error') {
           clearInterval(interval);
           setLoading(false);
-          setError('Не удалось сконвертировать видео. Проверьте ссылку или попробуйте позже.');
+          setError('Не удалось сконвертировать. Проверьте ссылку.');
         }
-      }, 3000); // 3000 мс = 3 секунды
-
+      }, 3000);
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -71,47 +58,9 @@ export default function Home() {
           SaveTube: YouTube в MP3
         </h1>
 
-        <form onSubmit={handleConvert} className="flex flex-col gap-4">
-          <input
-            type="text"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Вставьте ссылку на YouTube"
-            className="w-full border border-gray-300 rounded-lg p-3 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          />
+        <ConvertForm onConvert={handleConvert} loading={loading} />
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setQuality('128')}
-              className={`flex-1 py-2 rounded-lg border ${quality === '128' ? 'bg-blue-100 border-blue-500 text-blue-700' : 'border-gray-300 text-gray-600'}`}
-              disabled={loading}
-            >
-              Экономно (128 kbps)
-            </button>
-            <button
-              type="button"
-              onClick={() => setQuality('320')}
-              className={`flex-1 py-2 rounded-lg border ${quality === '320' ? 'bg-blue-100 border-blue-500 text-blue-700' : 'border-gray-300 text-gray-600'}`}
-              disabled={loading}
-            >
-              HQ (320 kbps)
-            </button>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-          >
-            {loading ? 'Конвертируем...' : 'Конвертировать'}
-          </button>
-        </form>
-
-        {error && (
-          <p className="mt-4 text-red-500 text-sm text-center">{error}</p>
-        )}
+        {error && <p className="mt-4 text-red-500 text-sm text-center">{error}</p>}
 
         {downloadLink && (
           <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-center">
@@ -125,6 +74,8 @@ export default function Home() {
             </a>
           </div>
         )}
+
+        <HistoryList history={history} onClear={clearHistory} />
       </div>
     </main>
   );
