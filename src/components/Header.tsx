@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 
 type Props = {
   onOpenHistory: () => void;
 };
 
 export function Header({ onOpenHistory }: Props) {
+  const pathname = usePathname();
   return (
-    <header className="w-full py-4 px-6 flex items-center justify-between bg-white/70 backdrop-blur-md border-b border-amber-100 sticky top-0 z-50">
-      
-      {/* Левая часть: Лого и История */}
+    <header className="w-full h-20 px-6 flex items-center justify-between bg-white/70 backdrop-blur-md border-b border-amber-100 sticky top-0 z-50">
+    
       <div className="flex items-center gap-4">
         <Link href="/" className="flex items-center gap-3 group">
       <div className="w-14 h-14 relative group-hover:scale-105 transition-transform">
@@ -19,7 +20,7 @@ export function Header({ onOpenHistory }: Props) {
           src="/images/logo.png" 
           alt="SaveTube Logo" 
           fill 
-          sizes="64px" // <-- Не забудьте обновить размер и здесь
+          sizes="64px" 
           className="object-contain" 
         />
       </div>
@@ -28,7 +29,6 @@ export function Header({ onOpenHistory }: Props) {
           </span>
         </Link>
 
-        {/* Кнопка Истории (Часики со стрелочкой) */}
         <button 
           onClick={onOpenHistory}
           className="p-2 ml-2 rounded-full hover:bg-amber-100 text-autumn-coffee transition-colors"
@@ -40,15 +40,14 @@ export function Header({ onOpenHistory }: Props) {
         </button>
       </div>
 
-      {/* Правая часть: Навигация */}
-      <nav className="flex items-center gap-4 sm:gap-6 text-sm font-medium text-autumn-coffee">
-        <Link href="#faq" className="hover:text-autumn-amber transition hidden sm:block">
+<nav className="flex items-center gap-4 sm:gap-6 text-sm font-medium text-autumn-coffee">
+        {/* Подсветка FAQ */}
+        <Link 
+          href="/faq" 
+          className={`transition hidden sm:block ${pathname === '/faq' ? 'text-autumn-amber font-bold' : 'hover:text-autumn-amber'}`}
+        >
           FAQ
         </Link>
-        
-        <span className="cursor-not-allowed opacity-50 hidden md:block" title="Скоро">
-          Аутентификация
-        </span>
         
         <button className="p-2 rounded-full hover:bg-amber-100 transition" title="Смена темы">
           🌙

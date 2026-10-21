@@ -1,12 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  /* Наша осенняя палитра */
   --color-autumn-light: #fdfbf7;
   --color-autumn-beige: #f5e6d3;
   --color-autumn-coffee: #4a3728;
-
-  --color-autumn-amber: ##92400e;       
+  --color-autumn-amber: #b45309;
   --color-autumn-amber-hover: #92400e;
 }
 
@@ -18,7 +16,6 @@ body {
   background-position: center;
 }
 
-/* Красивый скроллбар в тон */
 ::-webkit-scrollbar {
   width: 8px;
 }
