@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎵 SaveTube — Конвертер YouTube в MP3
 
-## Getting Started
+**SaveTube** — это веб-приложение для быстрого и удобного скачивания музыки с YouTube в формате MP3. Проект разработан как MVP (минимально жизнеспособный продукт) с акцентом на современный дизайн, безопасность и обход современных защит YouTube.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?style=for-the-badge&logo=tailwind-css)
+![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+✨ Основные возможности
+Конвертация в 2 клика: Вставьте ссылку, выберите качество (128 или 320 kbps) и получите готовый файл.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Обход защиты YouTube: Использование связки yt-dlp + FFmpeg с обходом PO Token и TLS-блокировок.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Локальная история: Последние 10 конвертаций сохраняются в браузере пользователя (localStorage), не нагружая сервер.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Смена темы: Полноценный переключатель светлой и темной темы (сохраняется в браузере).
 
-## Learn More
+Локализация (RU/EN): Поддержка двух языков через React Context.
 
-To learn more about Next.js, take a look at the following resources:
+Адаптивный дизайн: Осенняя стилистика, стеклянные элементы (Glassmorphism) и адаптация под мобильные устройства.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Статистика: Счетчик успешных конвертаций в реальном времени (на базе Supabase).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+🛠 Технологический стек
+Frontend: Next.js 16 (App Router), React, TypeScript.
 
-## Deploy on Vercel
+Стилизация: Tailwind CSS v4 (кастомная тема, темная тема).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+База данных: Supabase (PostgreSQL) — используется для отслеживания статусов задач и счетчика конвертаций.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Бэкенд (API Routes): Node.js (встроенные модули child_process, fs, path).
+
+Движок конвертации: yt-dlp (скачивание) + FFmpeg (извлечение аудио).
+
+🏗 Архитектура проекта
+Проект использует модульную структуру для удобства поддержки:
+src/
+├── app/                  # Маршруты Next.js (App Router)
+│   ├── api/convert/      # API-роут для запуска конвертации
+│   ├── faq/              # Страница часто задаваемых вопросов
+│   ├── layout.tsx        # Корневой layout (шрифты, провайдеры)
+│   └── page.tsx          # Главная страница
+├── components/           # Переиспользуемые UI-компоненты
+│   ├── ConvertForm.tsx   # Форма ввода ссылки
+│   ├── Header.tsx        # Шапка сайта
+│   ├── Hero.tsx          # Главный экран
+│   ├── HistoryModal.tsx  # Модалка истории
+│   ├── ResultCard.tsx    # Карточка результата
+│   └── ThemeToggle.tsx   # Переключатель темы
+├── context/              # React Context (Локализация)
+├── hooks/                # Кастомные хуки (useHistory)
+├── lib/                  # Инициализация Supabase
+└── types/                # TypeScript-типы
+
+🛡 Особенности реализации (Борьба с YouTube)
+YouTube в 2026 году активно блокирует автоматические загрузки. В рамках MVP реализован комплексный обход:
+
+VPN / Прокси: Запросы к YouTube идут через локальный SOCKS5-прокси (порт 7890), чтобы обойти блокировки по IP.
+
+PO Token: Используется плагин bgutil-ytdlp-pot-provider (запущенный на порту 4416) для генерации Proof-of-Origin токенов, которые требует YouTube.
+
+JS Runtime (Deno): Установлен Deno для решения JavaScript-задач (n challenge), которые YouTube подсовывает вместо видео.
+
+Клиент mweb: В yt-dlp принудительно используется мобильный клиент mweb, так как он оказался наиболее стабильным в текущих условиях.
+
+⚠️ Ограничения MVP
+Длительность видео: Не более 2 часов.
+
+Размер файла: Не более 100 Мб.
+
+Плейлисты: Не поддерживаются (только одиночные видео).
+
+История: Хранится только локально в браузере (не синхронизируется между устройствами).
+
+Очистка БД: Записи о конвертациях старше 3 дней удаляются автоматически (Cron Job в Supabase).
