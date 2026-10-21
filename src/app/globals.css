@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  /* Наша осенняя палитра */
+  --color-autumn-light: #fdfbf7;
+  --color-autumn-beige: #f5e6d3;
+  --color-autumn-coffee: #4a3728;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-autumn-amber: ##92400e;       
+  --color-autumn-amber-hover: #92400e;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-autumn-coffee);
+  background-color: var(--color-autumn-light);
+  background-size: cover;
+  background-attachment: fixed;
+  background-position: center;
+}
+
+/* Красивый скроллбар в тон */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f5e6d3;
+}
+::-webkit-scrollbar-thumb {
+  background: #d97706;
+  border-radius: 4px;
 }

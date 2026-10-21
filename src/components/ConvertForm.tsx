@@ -18,42 +18,41 @@ export function ConvertForm({ onConvert, loading }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <input
-        type="text"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="Вставьте ссылку на YouTube"
-        className="w-full border border-gray-300 rounded-lg p-3 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-        disabled={loading}
-      />
-
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setQuality('128')}
-          className={`flex-1 py-2 rounded-lg border ${quality === '128' ? 'bg-blue-100 border-blue-500 text-blue-700' : 'border-gray-300 text-gray-600'}`}
+    <form onSubmit={handleSubmit} className="relative w-full max-w-3xl mx-auto">
+      {/* Стеклянный контейнер */}
+      <div className="flex flex-col md:flex-row items-center bg-white/40 backdrop-blur-lg border border-white/60 rounded-2xl p-2 shadow-lg shadow-autumn-coffee/5">
+        
+        {/* Поле ввода */}
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="Вставьте URL формата https://youtu.be/..."
+          className="flex-1 w-full bg-transparent border-none px-4 py-3 text-autumn-coffee placeholder-autumn-coffee/50 focus:outline-none text-base"
           disabled={loading}
-        >
-          Экономно (128 kbps)
-        </button>
-        <button
-          type="button"
-          onClick={() => setQuality('320')}
-          className={`flex-1 py-2 rounded-lg border ${quality === '320' ? 'bg-blue-100 border-blue-500 text-blue-700' : 'border-gray-300 text-gray-600'}`}
-          disabled={loading}
-        >
-          HQ (320 kbps)
-        </button>
+        />
+        
+        {/* Блок с качеством и кнопкой */}
+        <div className="flex items-center gap-2 mt-2 md:mt-0 w-full md:w-auto px-2 md:px-0">
+          <select 
+            value={quality} 
+            onChange={(e) => setQuality(e.target.value)}
+            className="bg-white/50 border border-amber-200/50 rounded-xl px-3 py-2.5 text-autumn-coffee text-sm focus:outline-none focus:ring-2 focus:ring-autumn-amber/50 cursor-pointer"
+            disabled={loading}
+          >
+            <option value="128">128 kbps</option>
+            <option value="320">320 kbps</option>
+          </select>
+          
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-autumn-amber hover:bg-autumn-amberHover text-white px-6 py-2.5 rounded-xl font-semibold transition-all disabled:opacity-50 whitespace-nowrap shadow-md shadow-autumn-amber/20"
+          >
+            {loading ? '...' : 'ОК'}
+          </button>
+        </div>
       </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-      >
-        {loading ? 'Конвертируем...' : 'Конвертировать'}
-      </button>
     </form>
   );
 }
