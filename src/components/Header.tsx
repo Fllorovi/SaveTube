@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from './ThemeToggle';
+import { useLanguage } from '../context/LanguageContext';
 
 type Props = {
   onOpenHistory: () => void;
@@ -11,6 +12,7 @@ type Props = {
 
 export function Header({ onOpenHistory }: Props) {
   const pathname = usePathname();
+  const { lang, setLang, t } = useLanguage();
   return (
     // Добавили dark:bg-black/50 и dark:border-gray-700
     <header className="w-full h-20 px-6 flex items-center justify-between bg-white/70 dark:bg-black/60 backdrop-blur-md border-b border-amber-100 dark:border-gray-800 sticky top-0 z-50 transition-colors duration-300">
@@ -51,10 +53,14 @@ export function Header({ onOpenHistory }: Props) {
         
         <ThemeToggle />
 
-        <select className="bg-transparent border-none outline-none cursor-pointer hover:text-autumn-amber transition font-medium dark:text-gray-200">
-          <option value="ru">RU</option>
-          <option value="en">EN</option>
-        </select>
+        <select 
+  value={lang} 
+  onChange={(e) => setLang(e.target.value as 'ru' | 'en')}
+  className="bg-transparent border-none outline-none cursor-pointer hover:text-autumn-amber transition font-medium dark:text-gray-200"
+>
+  <option value="ru">RU</option>
+  <option value="en">EN</option>
+</select>
       </nav>
     </header>
   );

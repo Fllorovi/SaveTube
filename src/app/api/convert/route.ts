@@ -4,10 +4,9 @@ import path from 'path';
 import fs from 'fs';
 import { supabase } from '../../../lib/supabase';
 
-// Вспомогательная функция для запуска yt-dlp с перебором клиентов
+// Вспомогательная функция для запуска yt-dlp
 function runYtDlp(args: string[]) {
   return new Promise<{ code: number | null, stderr: string }>((resolve) => {
-    // Пробуем запустить yt-dlp напрямую
     const child = spawn('yt-dlp', args, { shell: false });
     let stderrData = '';
 
@@ -17,7 +16,6 @@ function runYtDlp(args: string[]) {
 
     child.on('error', (err) => {
       console.error('Не удалось запустить yt-dlp напрямую:', err.message);
-      // Фолбэк на запуск через python, если yt-dlp нет в PATH
       const pyChild = spawn('python', ['-m', 'yt_dlp', ...args], { shell: false });
       let pyStderr = '';
       
@@ -42,7 +40,7 @@ export async function POST(req: Request) {
 
     // 1. Валидация ссылки
     if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
-      return NextResponse.json({ error: 'Некорректная ссылка' }, { status: 400 });
+      return NextResponse.json({ error: 'INVALID_URL' }, { status: 400 });
     }
 
     // 2. Создаем запись в Supabase
@@ -54,7 +52,7 @@ export async function POST(req: Request) {
 
     if (dbError || !task) {
       console.error('Ошибка БД:', dbError);
-      return NextResponse.json({ error: 'Ошибка базы данных' }, { status: 500 });
+      return NextResponse.json({ error: 'DB_ERROR' }, { status: 500 });
     }
 
     // 3. Запускаем конвертацию в фоне
@@ -64,7 +62,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 });
+    return NextResponse.json({ error: 'SERVER_ERROR' }, { status: 500 });
   }
 }
 
@@ -78,11 +76,10 @@ async function processVideo(taskId: string, url: string, quality: string) {
   const fileName = `${taskId}.mp3`;
   const outputPath = path.join(outputDir, fileName);
 
-  // Обновляем статус на 'processing'
   await supabase.from('conversions').update({ status: 'processing' }).eq('id', taskId);
 
-  // Базовые аргументы, которые нужны всегда
-  const baseArgs = [
+  // Оставляем только mweb, так как он единственный стабильно работает
+  const ytdlpArgs = [
     '-x',
     '--audio-format', 'mp3',
     '--audio-quality', quality === '128' ? '5' : '0',
@@ -90,51 +87,36 @@ async function processVideo(taskId: string, url: string, quality: string) {
     '--no-check-certificate',
     '--paths', `temp:${outputDir}`,
     '-o', outputPath,
-    '--retries', '10', // Увеличенное число попыток
+    '--retries', '10',
     '--fragment-retries', '10',
     '--socket-timeout', '30',
-    '--proxy', 'socks5://127.0.0.1:7890', // ВАШ VPN ПОРТ
+    '--proxy', 'socks5://127.0.0.1:7890', // VPN
     '--js-runtimes', 'deno',
-    '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416',
+    '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416', // PO Token
+    '--extractor-args', 'youtube:player_client=mweb', // Только mweb
     url
-    
   ];
 
-  // Список клиентов для перебора (сначала tv, потом web_safari)
-  const clients = ['tv', 'web_safari', 'mweb'];
+  console.log(`Запуск конвертации (mweb) для ${url}...`);
 
-  let success = false;
+  try {
+    const { code, stderr } = await runYtDlp(ytdlpArgs);
 
-  for (const client of clients) {
-    console.log(`Попытка конвертации с клиентом: ${client}...`);
-    
-    // Добавляем аргумент клиента к базовым
-    const currentArgs = [
-      ...baseArgs,
-      '--extractor-args', `youtube:player_client=${client}`
-    ];
-
-    try {
-      const { code, stderr } = await runYtDlp(currentArgs);
-
-      if (code === 0) {
-        console.log(`Успешно сконвертировано с клиентом ${client}: ${fileName}`);
-        await supabase
-          .from('conversions')
-          .update({ status: 'done', file_name: fileName })
-          .eq('id', taskId);
-        success = true;
-        break; // Выходим из цикла, если успех
-      } else {
-        console.warn(`Клиент ${client} не сработал. Код: ${code}. Ошибка: ${stderr.substring(0, 200)}...`);
-      }
-    } catch (err) {
-      console.error(`Критическая ошибка при клиенте ${client}:`, err);
+    if (code === 0) {
+      console.log(`Успешно сконвертировано: ${fileName}`);
+      await supabase
+        .from('conversions')
+        .update({ status: 'done', file_name: fileName })
+        .eq('id', taskId);
+    } else {
+      console.error(`Ошибка yt-dlp (код ${code}): ${stderr}`);
+      await supabase
+        .from('conversions')
+        .update({ status: 'error' })
+        .eq('id', taskId);
     }
-  }
-
-  if (!success) {
-    console.error('Все попытки конвертации провалились.');
+  } catch (err) {
+    console.error('Критическая ошибка при конвертации:', err);
     await supabase.from('conversions').update({ status: 'error' }).eq('id', taskId);
   }
 }

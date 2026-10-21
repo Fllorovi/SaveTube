@@ -9,6 +9,7 @@ import { HowTo } from '../components/HowTo';
 import { Footer } from '../components/Footer';
 import { HistoryModal } from '../components/HistoryModal'; 
 import { useHistory } from '../hooks/useHistory';
+import { useLanguage } from '../context/LanguageContext'; // <-- Импорт
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,7 @@ export default function Home() {
   const [totalConversions, setTotalConversions] = useState(0);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { history, addToHistory, clearHistory } = useHistory();
+  const { t } = useLanguage(); // <-- Получаем переводы
 
   useEffect(() => {
     const fetchCount = async () => {
@@ -27,7 +29,7 @@ export default function Home() {
     fetchCount();
   }, []);
 
-  const handleConvert = async (url: string, quality: string) => {
+    const handleConvert = async (url: string, quality: string) => {
     setLoading(true);
     setError('');
     setDownloadLink('');
@@ -41,7 +43,14 @@ export default function Home() {
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Ошибка при запуске');
+      
+      // Исправленный блок: закрыта фигурная скобка после throw
+      if (!res.ok) {
+        let errorMsg = t.errorServer;
+        if (data.error === 'INVALID_URL') errorMsg = t.errorInvalidUrl;
+        else if (data.error === 'DB_ERROR') errorMsg = t.errorDb;
+        throw new Error(errorMsg);
+      }
 
       const interval = setInterval(async () => {
         const { data: task, error: dbError } = await supabase
@@ -61,7 +70,7 @@ export default function Home() {
         } else if (task?.status === 'error') {
           clearInterval(interval);
           setLoading(false);
-          setError('Не удалось сконвертировать видео. Проверьте ссылку или попробуйте позже.');
+          setError(t.errorConvert);
         }
       }, 3000);
 
@@ -71,17 +80,11 @@ export default function Home() {
     }
   };
 
-    return (
+  return (
     <div className="min-h-screen flex flex-col bg-[url('/images/bg-pattern.jpg')] bg-cover bg-center bg-fixed bg-autumn-light dark:bg-black relative transition-colors duration-300">
-      
-      {/* Слой затемнения для темной темы (как на FAQ) */}
       <div className="absolute inset-0 bg-black/70 z-0 pointer-events-none hidden dark:block"></div>
-
-      {/* Оборачиваем весь контент, чтобы он был поверх затемнения */}
       <div className="relative z-10 flex flex-col min-h-screen">
-        
         <Header onOpenHistory={() => setIsHistoryOpen(true)} />
-        
         <main className="flex flex-col items-center w-full pb-20 flex-grow">
           <Hero 
             totalConversions={totalConversions} 
@@ -107,9 +110,7 @@ export default function Home() {
 
           <HowTo /> 
         </main>
-
         <Footer />
-
         <HistoryModal 
           isOpen={isHistoryOpen} 
           onClose={() => setIsHistoryOpen(false)} 
