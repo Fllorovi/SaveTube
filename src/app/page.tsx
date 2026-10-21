@@ -16,10 +16,7 @@ export default function Home() {
   const [downloadLink, setDownloadLink] = useState('');
   const [lastUrl, setLastUrl] = useState('');
   const [totalConversions, setTotalConversions] = useState(0);
-  
-  // Состояние для открытия/закрытия модалки истории
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  
   const { history, addToHistory, clearHistory } = useHistory();
 
   useEffect(() => {
@@ -31,7 +28,6 @@ export default function Home() {
   }, []);
 
   const handleConvert = async (url: string, quality: string) => {
-    // ... (код handleConvert остается без изменений)
     setLoading(true);
     setError('');
     setDownloadLink('');
@@ -45,7 +41,6 @@ export default function Home() {
       });
       
       const data = await res.json();
-      
       if (!res.ok) throw new Error(data.error || 'Ошибка при запуске');
 
       const interval = setInterval(async () => {
@@ -76,48 +71,52 @@ export default function Home() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col bg-[url('/images/bg-pattern.jpg')] bg-cover bg-center bg-fixed bg-autumn-light">
+    return (
+    <div className="min-h-screen flex flex-col bg-[url('/images/bg-pattern.jpg')] bg-cover bg-center bg-fixed bg-autumn-light dark:bg-black relative transition-colors duration-300">
       
-      {/* Передаем функцию открытия истории в шапку */}
-      <Header onOpenHistory={() => setIsHistoryOpen(true)} />
-      
-      <main className="flex flex-col items-center w-full pb-20">
-        <Hero 
-          totalConversions={totalConversions} 
-          onConvert={handleConvert} 
-          loading={loading} 
-        />
+      {/* Слой затемнения для темной темы (как на FAQ) */}
+      <div className="absolute inset-0 bg-black/70 z-0 pointer-events-none hidden dark:block"></div>
+
+      {/* Оборачиваем весь контент, чтобы он был поверх затемнения */}
+      <div className="relative z-10 flex flex-col min-h-screen">
         
-        {error && (
-          <div className="mt-4 w-full max-w-md mx-auto px-4">
-            <div className="bg-red-100/80 backdrop-blur-sm border border-red-200 text-red-700 p-4 rounded-xl text-center text-sm shadow-sm">
-              {error}
+        <Header onOpenHistory={() => setIsHistoryOpen(true)} />
+        
+        <main className="flex flex-col items-center w-full pb-20 flex-grow">
+          <Hero 
+            totalConversions={totalConversions} 
+            onConvert={handleConvert} 
+            loading={loading} 
+          />
+          
+          {error && (
+            <div className="mt-4 w-full max-w-md mx-auto px-4">
+              <div className="bg-red-100/80 dark:bg-red-900/80 backdrop-blur-sm border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 p-4 rounded-xl text-center text-sm shadow-sm transition-colors">
+                {error}
+              </div>
             </div>
+          )}
+
+          <div className="w-full flex justify-center">
+             <ResultCard 
+               downloadLink={downloadLink} 
+               videoUrl={lastUrl} 
+               loading={loading} 
+             />
           </div>
-        )}
 
-        <div className="w-full flex justify-center">
-           <ResultCard 
-             downloadLink={downloadLink} 
-             videoUrl={lastUrl} 
-             loading={loading} 
-           />
-        </div>
+          <HowTo /> 
+        </main>
 
-        {/* HistoryList удален отсюда */}
-        <HowTo /> 
-      </main>
+        <Footer />
 
-      <Footer />
-
-      {/* Модальное окно истории */}
-      <HistoryModal 
-        isOpen={isHistoryOpen} 
-        onClose={() => setIsHistoryOpen(false)} 
-        history={history} 
-        onClear={clearHistory} 
-      />
+        <HistoryModal 
+          isOpen={isHistoryOpen} 
+          onClose={() => setIsHistoryOpen(false)} 
+          history={history} 
+          onClear={clearHistory} 
+        />
+      </div>
     </div>
   );
 }
