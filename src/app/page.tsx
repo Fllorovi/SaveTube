@@ -16,7 +16,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [downloadLink, setDownloadLink] = useState('');
   const [lastUrl, setLastUrl] = useState('');
-  const [videoTitle, setVideoTitle] = useState(''); // <-- Новое состояние
+  const [videoTitle, setVideoTitle] = useState('');
   const [totalConversions, setTotalConversions] = useState(0);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { history, addToHistory, clearHistory } = useHistory();
@@ -34,7 +34,7 @@ export default function Home() {
     setLoading(true);
     setError('');
     setDownloadLink('');
-    setVideoTitle(''); // <-- Сбрасываем название при новом запросе
+    setVideoTitle('');
     setLastUrl(url);
 
     try {
@@ -56,7 +56,7 @@ export default function Home() {
       const interval = setInterval(async () => {
         const { data: task, error: dbError } = await supabase
           .from('conversions')
-          .select('status, file_name, title') // <-- Добавили title
+          .select('status, file_name, title')
           .eq('id', data.taskId)
           .single();
 
@@ -66,7 +66,7 @@ export default function Home() {
           clearInterval(interval);
           setLoading(false);
           setDownloadLink(`/audio/${task.file_name}`);
-          setVideoTitle(task.title || ''); // <-- Сохраняем название
+          setVideoTitle(task.title || '');
           addToHistory(url, task.file_name);
           setTotalConversions(prev => prev + 1); 
         } else if (task?.status === 'error') {
@@ -107,7 +107,7 @@ export default function Home() {
                downloadLink={downloadLink} 
                videoUrl={lastUrl} 
                loading={loading} 
-               title={videoTitle} // <-- Передаем название
+               title={videoTitle}
              />
           </div>
 

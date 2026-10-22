@@ -7,7 +7,7 @@ type Props = {
   downloadLink: string;
   videoUrl: string;
   loading: boolean;
-  title?: string; // <-- Добавили название видео
+  title?: string;
 };
 
 export function ResultCard({ downloadLink, videoUrl, loading, title }: Props) {
@@ -57,11 +57,10 @@ export function ResultCard({ downloadLink, videoUrl, loading, title }: Props) {
           </div>
         )}
 
-        {/* Название видео (обрезается до 2 строк) */}
         {title && (
           <h3 
             className="text-lg font-bold text-autumn-coffee dark:text-white mb-4 line-clamp-2 px-2"
-            title={title} // Показывает полное название при наведении
+            title={title}
           >
             {title}
           </h3>

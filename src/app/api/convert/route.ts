@@ -4,7 +4,6 @@ import path from 'path';
 import fs from 'fs';
 import { supabase } from '../../../lib/supabase';
 
-// Вспомогательная функция для запуска yt-dlp
 function runYtDlp(args: string[]) {
   return new Promise<{ code: number | null, stderr: string }>((resolve) => {
     const child = spawn('yt-dlp', args, { shell: false });
@@ -34,16 +33,19 @@ function runYtDlp(args: string[]) {
   });
 }
 
+// Очистка названия файла от запрещенных символов
+function sanitizeFileName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, '_').trim().substring(0, 100);
+}
+
 export async function POST(req: Request) {
   try {
     const { url, quality } = await req.json();
 
-    // 1. Валидация ссылки
     if (!url || (!url.includes('youtube.com') && !url.includes('youtu.be'))) {
       return NextResponse.json({ error: 'INVALID_URL' }, { status: 400 });
     }
 
-    // 2. Создаем запись в Supabase
     const { data: task, error: dbError } = await supabase
       .from('conversions')
       .insert([{ url, status: 'pending' }])
@@ -55,7 +57,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'DB_ERROR' }, { status: 500 });
     }
 
-    // 3. Запускаем конвертацию в фоне
     processVideo(task.id, url, quality || '320');
 
     return NextResponse.json({ success: true, taskId: task.id });
@@ -78,7 +79,6 @@ async function processVideo(taskId: string, url: string, quality: string) {
 
   await supabase.from('conversions').update({ status: 'processing' }).eq('id', taskId);
 
-  // Аргументы для yt-dlp (добавили --write-info-json)
   const ytdlpArgs = [
     '-x',
     '--audio-format', 'mp3',
@@ -87,14 +87,14 @@ async function processVideo(taskId: string, url: string, quality: string) {
     '--no-check-certificate',
     '--paths', `temp:${outputDir}`,
     '-o', outputPath,
-    '--write-info-json', // <-- Сохраняем метаданные
+    '--write-info-json',
     '--retries', '10',
     '--fragment-retries', '10',
     '--socket-timeout', '30',
-    '--proxy', 'socks5://127.0.0.1:7890', // VPN
+    '--proxy', 'socks5://127.0.0.1:7890',
     '--js-runtimes', 'deno',
-    '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416', // PO Token
-    '--extractor-args', 'youtube:player_client=mweb', // Только mweb
+    '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416',
+    '--extractor-args', 'youtube:player_client=mweb',
     url
   ];
 
@@ -103,32 +103,45 @@ async function processVideo(taskId: string, url: string, quality: string) {
   try {
     const { code, stderr } = await runYtDlp(ytdlpArgs);
 
-        if (code === 0) {
+    if (code === 0) {
       console.log(`Успешно сконвертировано: ${fileName}`);
       
-      // Пытаемся прочитать название видео из info.json
       let videoTitle = null;
-      // yt-dlp сохраняет файл как <имя>.mp3.info.json
-      const infoPath = `${outputPath}.info.json`; 
-      
-      console.log('Ищем info.json по пути:', infoPath);
-      console.log('Файл существует:', fs.existsSync(infoPath));
+      let finalFileName = fileName;
+      const infoPath = `${outputPath}.info.json`;
 
       try {
         if (fs.existsSync(infoPath)) {
           const info = JSON.parse(fs.readFileSync(infoPath, 'utf8'));
           videoTitle = info.title;
-          console.log('Найдено название:', videoTitle);
-          // Удаляем временный json, чтобы не засорять папку
+          
+          if (videoTitle) {
+            const safeTitle = sanitizeFileName(videoTitle);
+            const newFileName = `${safeTitle}.mp3`;
+            const newPath = path.join(outputDir, newFileName);
+
+            if (newFileName !== fileName) {
+              fs.renameSync(outputPath, newPath);
+              finalFileName = newFileName;
+              console.log(`Файл переименован: ${finalFileName}`);
+            }
+          }
+          
           fs.unlinkSync(infoPath);
         }
       } catch (e) {
-        console.error('Не удалось прочитать название видео:', e);
+        console.error('Не удалось прочитать название или переименовать файл:', e);
       }
 
       await supabase
         .from('conversions')
-        .update({ status: 'done', file_name: fileName, title: videoTitle })
+        .update({ status: 'done', file_name: finalFileName, title: videoTitle })
+        .eq('id', taskId);
+    } else {
+      console.error(`Ошибка yt-dlp (код ${code}): ${stderr}`);
+      await supabase
+        .from('conversions')
+        .update({ status: 'error' })
         .eq('id', taskId);
     }
   } catch (err) {
