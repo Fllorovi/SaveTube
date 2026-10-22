@@ -1,17 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useLanguage } from '../context/LanguageContext'; // <-- Импорт
+import { useLanguage } from '../context/LanguageContext';
 
 type Props = {
   downloadLink: string;
   videoUrl: string;
   loading: boolean;
+  title?: string; // <-- Добавили название видео
 };
 
-export function ResultCard({ downloadLink, videoUrl, loading }: Props) {
+export function ResultCard({ downloadLink, videoUrl, loading, title }: Props) {
   const [videoId, setVideoId] = useState<string | null>(null);
-  const { t } = useLanguage(); // <-- Получаем переводы
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!videoUrl) return;
@@ -54,6 +55,16 @@ export function ResultCard({ downloadLink, videoUrl, loading }: Props) {
           <div className="w-full aspect-video bg-amber-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mb-5">
             <span className="text-autumn-coffee/50 dark:text-gray-400 text-sm">{t.noCover}</span>
           </div>
+        )}
+
+        {/* Название видео (обрезается до 2 строк) */}
+        {title && (
+          <h3 
+            className="text-lg font-bold text-autumn-coffee dark:text-white mb-4 line-clamp-2 px-2"
+            title={title} // Показывает полное название при наведении
+          >
+            {title}
+          </h3>
         )}
 
         <a

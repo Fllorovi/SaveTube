@@ -78,7 +78,7 @@ async function processVideo(taskId: string, url: string, quality: string) {
 
   await supabase.from('conversions').update({ status: 'processing' }).eq('id', taskId);
 
-  // Оставляем только mweb, так как он единственный стабильно работает
+  // Аргументы для yt-dlp (добавили --write-info-json)
   const ytdlpArgs = [
     '-x',
     '--audio-format', 'mp3',
@@ -87,6 +87,7 @@ async function processVideo(taskId: string, url: string, quality: string) {
     '--no-check-certificate',
     '--paths', `temp:${outputDir}`,
     '-o', outputPath,
+    '--write-info-json', // <-- Сохраняем метаданные
     '--retries', '10',
     '--fragment-retries', '10',
     '--socket-timeout', '30',
@@ -102,17 +103,32 @@ async function processVideo(taskId: string, url: string, quality: string) {
   try {
     const { code, stderr } = await runYtDlp(ytdlpArgs);
 
-    if (code === 0) {
+        if (code === 0) {
       console.log(`Успешно сконвертировано: ${fileName}`);
+      
+      // Пытаемся прочитать название видео из info.json
+      let videoTitle = null;
+      // yt-dlp сохраняет файл как <имя>.mp3.info.json
+      const infoPath = `${outputPath}.info.json`; 
+      
+      console.log('Ищем info.json по пути:', infoPath);
+      console.log('Файл существует:', fs.existsSync(infoPath));
+
+      try {
+        if (fs.existsSync(infoPath)) {
+          const info = JSON.parse(fs.readFileSync(infoPath, 'utf8'));
+          videoTitle = info.title;
+          console.log('Найдено название:', videoTitle);
+          // Удаляем временный json, чтобы не засорять папку
+          fs.unlinkSync(infoPath);
+        }
+      } catch (e) {
+        console.error('Не удалось прочитать название видео:', e);
+      }
+
       await supabase
         .from('conversions')
-        .update({ status: 'done', file_name: fileName })
-        .eq('id', taskId);
-    } else {
-      console.error(`Ошибка yt-dlp (код ${code}): ${stderr}`);
-      await supabase
-        .from('conversions')
-        .update({ status: 'error' })
+        .update({ status: 'done', file_name: fileName, title: videoTitle })
         .eq('id', taskId);
     }
   } catch (err) {

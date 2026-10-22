@@ -9,17 +9,18 @@ import { HowTo } from '../components/HowTo';
 import { Footer } from '../components/Footer';
 import { HistoryModal } from '../components/HistoryModal'; 
 import { useHistory } from '../hooks/useHistory';
-import { useLanguage } from '../context/LanguageContext'; // <-- Импорт
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [downloadLink, setDownloadLink] = useState('');
   const [lastUrl, setLastUrl] = useState('');
+  const [videoTitle, setVideoTitle] = useState(''); // <-- Новое состояние
   const [totalConversions, setTotalConversions] = useState(0);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { history, addToHistory, clearHistory } = useHistory();
-  const { t } = useLanguage(); // <-- Получаем переводы
+  const { t } = useLanguage();
 
   useEffect(() => {
     const fetchCount = async () => {
@@ -29,10 +30,11 @@ export default function Home() {
     fetchCount();
   }, []);
 
-    const handleConvert = async (url: string, quality: string) => {
+  const handleConvert = async (url: string, quality: string) => {
     setLoading(true);
     setError('');
     setDownloadLink('');
+    setVideoTitle(''); // <-- Сбрасываем название при новом запросе
     setLastUrl(url);
 
     try {
@@ -44,7 +46,6 @@ export default function Home() {
       
       const data = await res.json();
       
-      // Исправленный блок: закрыта фигурная скобка после throw
       if (!res.ok) {
         let errorMsg = t.errorServer;
         if (data.error === 'INVALID_URL') errorMsg = t.errorInvalidUrl;
@@ -55,7 +56,7 @@ export default function Home() {
       const interval = setInterval(async () => {
         const { data: task, error: dbError } = await supabase
           .from('conversions')
-          .select('status, file_name')
+          .select('status, file_name, title') // <-- Добавили title
           .eq('id', data.taskId)
           .single();
 
@@ -65,6 +66,7 @@ export default function Home() {
           clearInterval(interval);
           setLoading(false);
           setDownloadLink(`/audio/${task.file_name}`);
+          setVideoTitle(task.title || ''); // <-- Сохраняем название
           addToHistory(url, task.file_name);
           setTotalConversions(prev => prev + 1); 
         } else if (task?.status === 'error') {
@@ -105,6 +107,7 @@ export default function Home() {
                downloadLink={downloadLink} 
                videoUrl={lastUrl} 
                loading={loading} 
+               title={videoTitle} // <-- Передаем название
              />
           </div>
 
