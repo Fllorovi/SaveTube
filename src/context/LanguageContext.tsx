@@ -57,6 +57,8 @@ const translations = {
     errorServer: 'Внутренняя ошибка сервера',
     errorInvalidUrl: 'Некорректная ссылка на видео',
     errorDb: 'Ошибка базы данных. Попробуйте позже.',
+    errorTooLong: 'Видео слишком длинное. Максимальная длительность — 2 часа.',
+    errorTooLarge: 'Файл слишком большой. Максимальный размер — 100 Мб.',
   },
   en: {
     // Main
@@ -110,6 +112,8 @@ const translations = {
     errorServer: 'Internal server error',
     errorInvalidUrl: 'Invalid video link',
     errorDb: 'Database error. Please try again later.',
+    errorTooLong: 'Video is too long. Maximum duration is 2 hours.',
+    errorTooLarge: 'File is too large. Maximum size is 100 MB.',
   }
 };
 
