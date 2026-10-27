@@ -4,37 +4,6 @@ import path from 'path';
 import fs from 'fs';
 import { supabase } from '../../../lib/supabase';
 
-async function getVideoDuration(url: string): Promise<number | null> {
-  // Запускаем yt-dlp только для получения длительности (без скачивания)
-  const args = [
-    '--get-duration',
-    '--no-playlist',
-    '--proxy', 'socks5://127.0.0.1:7890',
-    '--js-runtimes', 'deno',
-    '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416',
-    '--extractor-args', 'youtube:player_client=mweb',
-    url
-  ];
-  
-  try {
-    const { code, stderr } = await runYtDlp(args);
-    // yt-dlp с --get-duration выводит длительность в stdout, но наша функция читает stderr.
-    // Проще использовать --print duration
-    const printArgs = ['--print', 'duration', ...args.slice(1)]; // заменяем --get-duration на --print duration
-    const { code: code2, stderr: out2 } = await runYtDlp(printArgs);
-    
-    if (code2 === 0) {
-      // Ищем в выводе число (длительность в секундах)
-      const match = out2.match(/^(\d+)$/m);
-      if (match) return parseInt(match[1], 10);
-    }
-  } catch (e) {
-    console.error('Ошибка получения длительности:', e);
-  }
-  return null; // Не удалось узнать — пропускаем проверку
-}
-
-
 function runYtDlp(args: string[]) {
   return new Promise<{ code: number | null, stderr: string }>((resolve) => {
     const child = spawn('yt-dlp', args, { shell: false });
@@ -64,7 +33,32 @@ function runYtDlp(args: string[]) {
   });
 }
 
-// Очистка названия файла от запрещенных символов
+async function getVideoDuration(url: string): Promise<number | null> {
+  const args = [
+    '--print', 'duration',
+    '--no-playlist',
+    '--proxy', 'socks5://127.0.0.1:7890',
+    '--js-runtimes', 'deno',
+    '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416',
+    '--extractor-args', 'youtube:player_client=mweb',
+    url
+  ];
+  
+  try {
+    const { code, stderr } = await runYtDlp(args);
+    if (code === 0) {
+      // yt-dlp выводит результат в stdout, но наша функция собирает stderr.
+      // Обычно --print пишет в stdout, но в некоторых версиях дублирует в stderr.
+      // Ищем число в выводе.
+      const match = stderr.match(/^(\d+)$/m);
+      if (match) return parseInt(match[1], 10);
+    }
+  } catch (e) {
+    console.error('Ошибка получения длительности:', e);
+  }
+  return null;
+}
+
 function sanitizeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, '_').trim().substring(0, 100);
 }
@@ -100,7 +94,8 @@ export async function POST(req: Request) {
 
 async function processVideo(taskId: string, url: string, quality: string) {
   const outputDir = path.join(process.cwd(), 'public', 'audio');
-    // Проверка длительности (лимит 2 часа = 7200 секунд)
+  
+  // 1. Проверка длительности (лимит 2 часа = 7200 секунд)
   console.log('Проверка длительности видео...');
   const duration = await getVideoDuration(url);
   if (duration && duration > 7200) {
@@ -108,7 +103,7 @@ async function processVideo(taskId: string, url: string, quality: string) {
     await supabase.from('conversions').update({ status: 'error' }).eq('id', taskId);
     return;
   }
-  
+
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
@@ -144,7 +139,8 @@ async function processVideo(taskId: string, url: string, quality: string) {
 
     if (code === 0) {
       console.log(`Успешно сконвертировано: ${fileName}`);
-            // Проверка размера (лимит 100 Мб = 104857600 байт)
+
+      // 2. Проверка размера (лимит 100 Мб)
       const stats = fs.statSync(outputPath);
       const MAX_SIZE = 100 * 1024 * 1024; // 100 Мб
       
@@ -154,6 +150,8 @@ async function processVideo(taskId: string, url: string, quality: string) {
         await supabase.from('conversions').update({ status: 'error' }).eq('id', taskId);
         return;
       }
+
+      // 3. Чтение названия и переименование
       let videoTitle = null;
       let finalFileName = fileName;
       const infoPath = `${outputPath}.info.json`;
@@ -181,6 +179,8 @@ async function processVideo(taskId: string, url: string, quality: string) {
         console.error('Не удалось прочитать название или переименовать файл:', e);
       }
 
+      // 4. Увеличиваем счетчик и обновляем запись
+      await supabase.rpc('increment_conversions');
       await supabase
         .from('conversions')
         .update({ status: 'done', file_name: finalFileName, title: videoTitle })
