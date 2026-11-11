@@ -46,7 +46,7 @@ export function Header({ onOpenHistory }: Props) {
       <nav className="flex items-center gap-4 sm:gap-6 text-sm font-medium text-autumn-coffee dark:text-gray-200">
         <Link 
           href="/faq" 
-          className={`transition hidden sm:block ${pathname === '/faq' ? 'text-autumn-amber font-bold' : 'hover:text-autumn-amber'}`}
+          className={`transition ${pathname === '/faq' ? 'text-autumn-amber font-bold' : 'hover:text-autumn-amber'}`}
         >
           FAQ
         </Link>
