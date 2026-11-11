@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
 type Props = {
@@ -11,19 +10,17 @@ type Props = {
 };
 
 export function ResultCard({ downloadLink, videoUrl, loading, title }: Props) {
-  const [videoId, setVideoId] = useState<string | null>(null);
   const { t } = useLanguage();
 
-  useEffect(() => {
-    if (!videoUrl) return;
-    let id = null;
+  // Вычисляем videoId прямо во время рендера — это безопасно и быстро
+  let videoId: string | null = null;
+  if (videoUrl) {
     if (videoUrl.includes('youtu.be/')) {
-      id = videoUrl.split('youtu.be/')[1]?.split('?')[0];
+      videoId = videoUrl.split('youtu.be/')[1]?.split('?')[0] || null;
     } else if (videoUrl.includes('v=')) {
-      id = videoUrl.split('v=')[1]?.split('&')[0];
+      videoId = videoUrl.split('v=')[1]?.split('&')[0] || null;
     }
-    setVideoId(id);
-  }, [videoUrl]);
+  }
 
   if (loading) {
     return (
@@ -31,7 +28,7 @@ export function ResultCard({ downloadLink, videoUrl, loading, title }: Props) {
         <div className="bg-white/40 dark:bg-[#1a1512]/80 backdrop-blur-md p-6 rounded-2xl border border-white/50 dark:border-gray-700 text-center shadow-sm transition-colors">
           <p className="text-autumn-coffee dark:text-white font-semibold mb-3">{t.converting}</p>
           <div className="h-2.5 w-full bg-amber-200/50 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div className="h-full bg-autumn-amber animate-pulse w-3/4 rounded-full"></div>
+            <div className="h-full bg-autumn-amber w-1/2 rounded-full animate-[shimmer_2s_infinite]"></div>
           </div>
           <p className="text-xs text-autumn-coffee/60 dark:text-gray-400 mt-2">{t.waitTime}</p>
         </div>

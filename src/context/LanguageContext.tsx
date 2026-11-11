@@ -14,7 +14,7 @@ const translations = {
     btnLoading: '...',
     btnDownload: 'Скачать MP3',
     converting: 'Идет конвертация...',
-    waitTime: 'Это может занять до 30 секунд',
+    waitTime: 'Это может занять от 30 секунд до нескольких минут (зависит от длины видео)',
     noCover: 'Обложка недоступна',
     conversions: 'успешных конвертаций',
     
@@ -69,7 +69,7 @@ const translations = {
     btnLoading: '...',
     btnDownload: 'Download MP3',
     converting: 'Converting...',
-    waitTime: 'This may take up to 30 seconds',
+    waitTime: 'This may take from 30 seconds to a few minutes (depends on video length)',
     noCover: 'Cover not available',
     conversions: 'successful conversions',
     
