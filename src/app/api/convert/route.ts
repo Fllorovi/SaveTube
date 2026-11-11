@@ -92,7 +92,6 @@ export async function POST(req: Request) {
 async function processVideo(taskId: string, url: string, quality: string) {
   const outputDir = path.join(process.cwd(), 'public', 'audio');
   
-  // 1. Проверка длительности (лимит 2 часа = 7200 секунд)
   console.log('Проверка длительности видео...');
   const duration = await getVideoDuration(url);
   if (duration && duration > 7200) {
@@ -137,18 +136,16 @@ async function processVideo(taskId: string, url: string, quality: string) {
     if (code === 0) {
       console.log(`Успешно сконвертировано: ${fileName}`);
 
-      // 2. Проверка размера (лимит 100 Мб)
       const stats = fs.statSync(outputPath);
-      const MAX_SIZE = 100 * 1024 * 1024; // 100 Мб
+      const MAX_SIZE = 100 * 1024 * 1024;
       
       if (stats.size > MAX_SIZE) {
         console.error(`Файл слишком большой: ${(stats.size / 1024 / 1024).toFixed(1)} Мб`);
-        fs.unlinkSync(outputPath); // Удаляем файл
+        fs.unlinkSync(outputPath);
         await supabase.from('conversions').update({ status: 'error' }).eq('id', taskId);
         return;
       }
 
-      // 3. Чтение названия и переименование
       let videoTitle = null;
       let finalFileName = fileName;
       const infoPath = `${outputPath}.info.json`;
@@ -176,13 +173,23 @@ async function processVideo(taskId: string, url: string, quality: string) {
         console.error('Не удалось прочитать название или переименовать файл:', e);
       }
 
-      // 4. Увеличиваем счетчик (ЕДИНСТВЕННЫЙ РАЗ) и обновляем запись
-      await supabase.rpc('increment_conversions');
+      // Увеличиваем счетчик и обновляем запись
+      console.log('Пытаюсь увеличить счетчик в БД...');
+      const { error: rpcError } = await supabase.rpc('increment_conversions');
+      
+      if (rpcError) {
+        console.error('ОШИБКА ПРИ УВЕЛИЧЕНИИ СЧЕТЧИКА:', rpcError);
+      } else {
+        console.log('Счетчик успешно увеличен!');
+      }
+
       await supabase
         .from('conversions')
         .update({ status: 'done', file_name: finalFileName, title: videoTitle })
         .eq('id', taskId);
+
     } else {
+      // Сюда попадаем, если yt-dlp упал с ошибкой
       console.error(`Ошибка yt-dlp (код ${code}): ${stderr}`);
       await supabase
         .from('conversions')
