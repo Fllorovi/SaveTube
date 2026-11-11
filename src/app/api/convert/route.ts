@@ -47,9 +47,6 @@ async function getVideoDuration(url: string): Promise<number | null> {
   try {
     const { code, stderr } = await runYtDlp(args);
     if (code === 0) {
-      // yt-dlp выводит результат в stdout, но наша функция собирает stderr.
-      // Обычно --print пишет в stdout, но в некоторых версиях дублирует в stderr.
-      // Ищем число в выводе.
       const match = stderr.match(/^(\d+)$/m);
       if (match) return parseInt(match[1], 10);
     }
@@ -179,7 +176,7 @@ async function processVideo(taskId: string, url: string, quality: string) {
         console.error('Не удалось прочитать название или переименовать файл:', e);
       }
 
-      // 4. Увеличиваем счетчик и обновляем запись
+      // 4. Увеличиваем счетчик (ЕДИНСТВЕННЫЙ РАЗ) и обновляем запись
       await supabase.rpc('increment_conversions');
       await supabase
         .from('conversions')

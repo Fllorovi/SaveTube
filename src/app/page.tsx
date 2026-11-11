@@ -24,8 +24,18 @@ export default function Home() {
 
   useEffect(() => {
     const fetchCount = async () => {
-      const { data, error } = await supabase.rpc('get_total_conversions');
-      if (!error && data) setTotalConversions(data);
+      // Делаем прямой запрос к таблице stats
+      const { data: statsData, error: statsError } = await supabase
+        .from('stats')
+        .select('total_conversions')
+        .eq('id', 1)
+        .single();
+
+      console.log('Данные из таблицы stats:', statsData, 'Ошибка:', statsError);
+      
+      if (!statsError && statsData) {
+        setTotalConversions(statsData.total_conversions || 0);
+      }
     };
     fetchCount();
   }, []);
@@ -68,6 +78,8 @@ export default function Home() {
           setDownloadLink(`/audio/${task.file_name}`);
           setVideoTitle(task.title || '');
           addToHistory(url, task.file_name);
+          
+          // Просто прибавляем 1 к текущему значению (route.ts уже прибавил 1 в БД)
           setTotalConversions(prev => prev + 1); 
         } else if (task?.status === 'error') {
           clearInterval(interval);
@@ -76,8 +88,9 @@ export default function Home() {
         }
       }, 3000);
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : t.errorServer;
+      setError(errorMessage);
       setLoading(false);
     }
   };
